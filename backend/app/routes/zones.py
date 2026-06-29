@@ -10,6 +10,7 @@ Routes
 ------
 GET    /api/v1/properties/<property_id>/zones                  List all zones.
 GET    /api/v1/properties/<property_id>/zones/summary          Zone summary stats.
+GET    /api/v1/properties/<property_id>/zones/export           Export zones as GeoJSON file.
 POST   /api/v1/properties/<property_id>/zones                  Create a zone.
 POST   /api/v1/properties/<property_id>/zones/import           Bulk GeoJSON import.
 PUT    /api/v1/properties/<property_id>/zones/<zone_id>        Update a zone.
@@ -24,7 +25,9 @@ Error envelope:
 
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
+import json
+
+from flask import Blueprint, Response, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
 
@@ -212,6 +215,42 @@ def get_zones_summary(property_id: str):
         return _service_error(exc)
 
     return _ok(summary)
+
+
+@zones_bp.get("/export")
+@jwt_required()
+def export_zones(property_id: str):
+    """Export all zones for a property as a downloadable GeoJSON file.
+
+    Produces a valid GeoJSON FeatureCollection where every zone becomes
+    one Feature.  Each feature carries ``name``, ``type``, ``status``,
+    and ``mower_count`` in its ``properties`` object, and the raw JSONB
+    geometry in its ``geometry`` field.
+
+    Returns:
+        200 OK  — ``application/geo+json`` attachment named
+                  ``zones_<property_id>.geojson``.
+        404     — property not found or not owned by user.
+    """
+    user_id: str = get_jwt_identity()
+
+    try:
+        feature_collection = ZoneService.export_zones_geojson(property_id, user_id)
+    except ZoneError as exc:
+        return _service_error(exc)
+
+    payload = json.dumps(feature_collection, indent=2)
+    filename = f"zones_{property_id}.geojson"
+
+    return Response(
+        payload,
+        status=200,
+        mimetype="application/geo+json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Type": "application/geo+json; charset=utf-8",
+        },
+    )
 
 
 @zones_bp.post("/import")

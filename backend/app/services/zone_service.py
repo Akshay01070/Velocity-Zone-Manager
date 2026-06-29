@@ -305,6 +305,51 @@ class ZoneService:
         }
 
     # ------------------------------------------------------------------
+    # Export
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def export_zones_geojson(property_id: str, user_id: str) -> dict:
+        """Build a GeoJSON FeatureCollection from all zones in a property.
+
+        Each zone is represented as a GeoJSON Feature.  The feature's
+        ``properties`` object includes the four required fields:
+        ``name``, ``type``, ``status``, and ``mower_count``.
+        The feature's ``geometry`` is taken verbatim from the JSONB column.
+
+        Args:
+            property_id: Parent property UUID.
+            user_id:     Authenticated user's id.
+
+        Returns:
+            A ``dict`` that is a valid GeoJSON FeatureCollection.
+
+        Raises:
+            :class:`PropertyNotFoundError`: if property not found / not owned.
+        """
+        ZoneService._assert_property_owned(property_id, user_id)
+        zones = zone_repo.list_zones_for_property(property_id)
+
+        features: list[dict] = [
+            {
+                "type": "Feature",
+                "properties": {
+                    "name": zone.name,
+                    "type": zone.type.value,
+                    "status": zone.status.value,
+                    "mower_count": zone.mower_count,
+                },
+                "geometry": zone.geometry,
+            }
+            for zone in zones
+        ]
+
+        return {
+            "type": "FeatureCollection",
+            "features": features,
+        }
+
+    # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
 
