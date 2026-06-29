@@ -9,8 +9,9 @@ to the requesting user before any zone operation proceeds.
 
 Exceptions
 ----------
-ZoneError        — base class (message, http_status)
-ZoneNotFoundError — 404 Not Found
+ZoneError           — base class (message, http_status)
+ZoneValidationError — 400 Bad Request (shared validation failures)
+ZoneNotFoundError   — 404 Not Found
 """
 
 from __future__ import annotations
@@ -32,6 +33,13 @@ class ZoneError(Exception):
         self.http_status = http_status
 
 
+class ZoneValidationError(ZoneError):
+    """Raised for business-rule validation failures (HTTP 400)."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message, 400)
+
+
 class ZoneNotFoundError(ZoneError):
     def __init__(self, zone_id: str) -> None:
         super().__init__(f"Zone '{zone_id}' not found.", 404)
@@ -42,6 +50,26 @@ class PropertyNotFoundError(ZoneError):
 
     def __init__(self, property_id: str) -> None:
         super().__init__(f"Property '{property_id}' not found.", 404)
+
+
+# ── Shared validation ──────────────────────────────────────────────────────
+
+def validate_zone(mower_count: int) -> None:
+    """Apply shared business-rule validation for zone data.
+
+    This function is called by both :meth:`ZoneService.create_zone` and
+    :meth:`ZoneService.update_zone` so that the rules are never duplicated.
+
+    Args:
+        mower_count: Number of mowers assigned to the zone.
+
+    Raises:
+        :class:`ZoneValidationError`: if *mower_count* is 0.
+    """
+    if mower_count == 0:
+        raise ZoneValidationError(
+            "A zone must have at least one assigned mower."
+        )
 
 
 # ── Service ────────────────────────────────────────────────────────────────
@@ -109,6 +137,7 @@ class ZoneService:
             :class:`PropertyNotFoundError`: if property not found / not owned.
         """
         ZoneService._assert_property_owned(property_id, user_id)
+        validate_zone(mower_count)
 
         return zone_repo.create_zone(
             property_id=property_id,
@@ -147,6 +176,10 @@ class ZoneService:
         if zone is None:
             raise ZoneNotFoundError(zone_id)
 
+        # If mower_count is being patched, validate the new value.
+        effective_mower_count = updates.get("mower_count", zone.mower_count)
+        validate_zone(effective_mower_count)
+
         return zone_repo.update_zone(zone, updates)
 
     @staticmethod
@@ -169,6 +202,53 @@ class ZoneService:
             raise ZoneNotFoundError(zone_id)
 
         zone_repo.delete_zone(zone)
+
+    # ------------------------------------------------------------------
+    # Summary
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_zones_summary(property_id: str, user_id: str) -> dict:
+        """Return aggregated statistics for all zones in a property.
+
+        Args:
+            property_id: Parent property UUID.
+            user_id:     Authenticated user's id.
+
+        Returns:
+            Dict with keys: totalZones, totalArea, totalMowers,
+            understaffedCount.
+
+        Raises:
+            :class:`PropertyNotFoundError`: if property not found / not owned.
+        """
+        ZoneService._assert_property_owned(property_id, user_id)
+        zones = zone_repo.list_zones_for_property(property_id)
+
+        total_zones = len(zones)
+        total_mowers = sum(z.mower_count for z in zones)
+
+        # area is derived from the geometry object if present.  The field
+        # stored in JSONB may optionally carry an "area" key (numeric).  If
+        # absent we treat the zone's area contribution as 0 so the endpoint
+        # remains functional before area tracking is formalised.
+        total_area = sum(
+            float(z.geometry.get("area", 0)) for z in zones if z.geometry
+        )
+
+        # understaffed: area > mower_count * 2  (computed, not stored)
+        understaffed_count = sum(
+            1
+            for z in zones
+            if float(z.geometry.get("area", 0)) > z.mower_count * 2
+        )
+
+        return {
+            "totalZones": total_zones,
+            "totalArea": total_area,
+            "totalMowers": total_mowers,
+            "understaffedCount": understaffed_count,
+        }
 
     # ------------------------------------------------------------------
     # Private helpers

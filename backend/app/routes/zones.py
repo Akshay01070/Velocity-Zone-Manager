@@ -8,10 +8,11 @@ operation is performed.
 
 Routes
 ------
-GET    /api/v1/properties/<property_id>/zones               List all zones.
-POST   /api/v1/properties/<property_id>/zones               Create a zone.
-PUT    /api/v1/properties/<property_id>/zones/<zone_id>     Update a zone.
-DELETE /api/v1/properties/<property_id>/zones/<zone_id>     Delete a zone.
+GET    /api/v1/properties/<property_id>/zones                  List all zones.
+GET    /api/v1/properties/<property_id>/zones/summary          Zone summary stats.
+POST   /api/v1/properties/<property_id>/zones                  Create a zone.
+PUT    /api/v1/properties/<property_id>/zones/<zone_id>        Update a zone.
+DELETE /api/v1/properties/<property_id>/zones/<zone_id>        Delete a zone.
 
 Success envelope:
     { "data": { ... } }
@@ -188,3 +189,23 @@ def delete_zone(property_id: str, zone_id: str):
         return _service_error(exc)
 
     return _ok({"message": f"Zone '{zone_id}' deleted successfully."})
+
+
+@zones_bp.get("/summary")
+@jwt_required()
+def get_zones_summary(property_id: str):
+    """Return aggregated statistics for all zones in a property.
+
+    Returns:
+        200 OK  — summary object with totalZones, totalArea,
+                   totalMowers, and understaffedCount.
+        404     — property not found or not owned by user.
+    """
+    user_id: str = get_jwt_identity()
+
+    try:
+        summary = ZoneService.get_zones_summary(property_id, user_id)
+    except ZoneError as exc:
+        return _service_error(exc)
+
+    return _ok(summary)

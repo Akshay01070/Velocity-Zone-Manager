@@ -7,6 +7,10 @@ ZoneResponseSchema — serialises a Zone ORM instance to JSON.
 
 Geometry is accepted and returned as a raw dict (JSONB).
 Full GeoJSON validation is intentionally deferred to a future task.
+
+Computed fields
+---------------
+understaffed  — True when area > mower_count * 2; never persisted to DB.
 """
 
 from __future__ import annotations
@@ -125,7 +129,11 @@ class ZoneUpdateSchema(Schema):
 # ── Response schema ────────────────────────────────────────────────────────
 
 class ZoneResponseSchema(Schema):
-    """Serialises a Zone ORM instance to a dict for JSON responses."""
+    """Serialises a Zone ORM instance to a dict for JSON responses.
+
+    ``understaffed`` is a computed field (area > mower_count * 2) and is
+    **never** stored in the database.
+    """
 
     id = fields.String()
     property_id = fields.String()
@@ -135,6 +143,7 @@ class ZoneResponseSchema(Schema):
     mower_count = fields.Integer()
     geometry = fields.Dict()
     created_at = fields.Method("get_created_at")
+    understaffed = fields.Method("get_understaffed")
 
     def get_type(self, obj) -> str | None:
         return obj.type.value if obj.type else None
@@ -144,6 +153,15 @@ class ZoneResponseSchema(Schema):
 
     def get_created_at(self, obj) -> str | None:
         return obj.created_at.isoformat() if obj.created_at else None
+
+    def get_understaffed(self, obj) -> bool:
+        """Compute understaffed flag: area > mower_count * 2.
+
+        ``area`` is read from ``geometry["area"]`` (numeric). If the key is
+        absent the zone is not considered understaffed.
+        """
+        area = float(obj.geometry.get("area", 0)) if obj.geometry else 0.0
+        return area > obj.mower_count * 2
 
 
 _zone_schema = ZoneResponseSchema()
