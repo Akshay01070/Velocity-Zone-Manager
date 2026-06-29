@@ -9,6 +9,8 @@ import type {
   Property,
   CreatePropertyRequest,
   UpdatePropertyRequest,
+  PropertyListParams,
+  PaginationMeta,
   ZoneSummary,
 } from "@/types/property";
 
@@ -18,8 +20,16 @@ interface DataEnvelope<T> {
 }
 
 export const propertiesApi = {
-  list: () =>
-    apiClient.get<DataEnvelope<{ properties: Property[] }>>("/properties/"),
+  list: (params?: PropertyListParams) => {
+    const query: Record<string, string | number> = {};
+    if (params?.search) query.search = params.search;
+    if (params?.type) query.type = params.type;
+    if (params?.page) query.page = params.page;
+    if (params?.limit) query.limit = params.limit;
+    return apiClient.get<
+      DataEnvelope<{ properties: Property[]; pagination: PaginationMeta }>
+    >("/properties/", { params: query });
+  },
 
   get: (id: string) =>
     apiClient.get<DataEnvelope<{ property: Property }>>(`/properties/${id}`),

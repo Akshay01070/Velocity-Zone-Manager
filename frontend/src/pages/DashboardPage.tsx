@@ -100,11 +100,9 @@ export function DashboardPage() {
                 <div className="property-card-icon" aria-hidden="true">⌂</div>
                 <div className="property-card-body">
                   <h4 className="property-card-name">{prop.name}</h4>
-                  {prop.address && (
-                    <p className="property-card-address">{prop.address}</p>
-                  )}
+                  <p className="property-card-address">{prop.type}</p>
                   <p className="property-card-meta">
-                    Created {formatDate(prop.created_at)}
+                    {prop.zone_count} zone{prop.zone_count !== 1 ? "s" : ""}
                   </p>
                 </div>
                 <span className="property-card-arrow" aria-hidden="true">→</span>
@@ -124,14 +122,6 @@ function getGreeting(): string {
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
-}
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
 }
 
 interface StatCardProps {
