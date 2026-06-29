@@ -1,40 +1,103 @@
 /**
- * src/components/map/MapView.tsx — OpenLayers map container placeholder.
+ * src/components/map/DrawableMap.tsx
  *
- * Full implementation (OSM tiles, zone layers, draw interaction) in
- * a future iteration.
+ * Reusable OpenLayers map component with full polygon draw/edit/delete support.
+ *
+ * Props:
+ *   onGeometryChange  — fires with GeoJSON geometry (EPSG:4326) on every change
+ *   initialGeometry   — optional seed geometry to display on mount
+ *   height            — CSS height of the map container (default "500px")
+ *   className         — extra class names for the outer wrapper
+ *
+ * Usage:
+ *   <DrawableMap onGeometryChange={(g) => setGeometry(g)} height="400px" />
  */
 
-import { useEffect, useRef } from "react";
-import Map from "ol/Map";
-import View from "ol/View";
-import TileLayer from "ol/layer/Tile";
-import OSM from "ol/source/OSM";
-// Note: ol/ol.css is imported globally via src/index.css
+import { useDrawableMap } from "@/map/useDrawableMap";
+import type { GeoJSONGeometry } from "@/types/zones";
 
-export function MapView() {
-  const mapRef = useRef<HTMLDivElement>(null);
+interface DrawableMapProps {
+  onGeometryChange?: (geometry: GeoJSONGeometry | null) => void;
+  initialGeometry?:  GeoJSONGeometry | null;
+  height?:           string;
+  className?:        string;
+  readOnly?:         boolean;
+}
 
-  useEffect(() => {
-    if (!mapRef.current) return;
+export function DrawableMap({
+  onGeometryChange,
+  initialGeometry,
+  height     = "500px",
+  className  = "",
+  readOnly   = false,
+}: DrawableMapProps) {
+  const { mapRef, mode, setMode, clearPolygon, hasPolygon } = useDrawableMap({
+    onGeometryChange,
+    initialGeometry,
+  });
 
-    const map = new Map({
-      target: mapRef.current,
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-      ],
-      view: new View({
-        center: [0, 0],
-        zoom: 3,
-      }),
-    });
+  return (
+    <div className={`drawable-map-wrapper ${className}`} style={{ height }}>
+      {/* ── Toolbar ─────────────────────────────────────────────────── */}
+      {!readOnly && (
+        <div className="map-toolbar" role="toolbar" aria-label="Map drawing tools">
+          {/* Draw */}
+          <button
+            id="map-draw-btn"
+            type="button"
+            className={`map-tool-btn ${mode === "drawing" ? "map-tool-btn--active" : ""}`}
+            onClick={() => setMode(mode === "drawing" ? "idle" : "drawing")}
+            title={mode === "drawing" ? "Cancel drawing" : "Draw polygon"}
+            aria-pressed={mode === "drawing"}
+          >
+            <span className="map-tool-icon" aria-hidden="true">✏️</span>
+            <span className="map-tool-label">
+              {mode === "drawing" ? "Cancel" : "Draw"}
+            </span>
+          </button>
 
-    return () => {
-      map.setTarget(undefined);
-    };
-  }, []);
+          {/* Modify */}
+          <button
+            id="map-edit-btn"
+            type="button"
+            className={`map-tool-btn ${mode === "modifying" ? "map-tool-btn--active" : ""}`}
+            onClick={() => setMode(mode === "modifying" ? "idle" : "modifying")}
+            title={hasPolygon ? "Edit vertices" : "Draw a polygon first"}
+            disabled={!hasPolygon}
+            aria-pressed={mode === "modifying"}
+          >
+            <span className="map-tool-icon" aria-hidden="true">⬡</span>
+            <span className="map-tool-label">
+              {mode === "modifying" ? "Done" : "Edit"}
+            </span>
+          </button>
 
-  return <div ref={mapRef} className="ol-map" />;
+          {/* Delete */}
+          <button
+            id="map-delete-btn"
+            type="button"
+            className="map-tool-btn map-tool-btn--danger"
+            onClick={clearPolygon}
+            title="Delete polygon"
+            disabled={!hasPolygon}
+            aria-label="Delete polygon"
+          >
+            <span className="map-tool-icon" aria-hidden="true">🗑️</span>
+            <span className="map-tool-label">Delete</span>
+          </button>
+
+          {/* Status chip */}
+          <div className="map-status-chip" aria-live="polite">
+            {mode === "drawing"   && "Click to place vertices · Double-click to close"}
+            {mode === "modifying" && "Drag vertices to reshape · Click Done when finished"}
+            {mode === "idle" && !hasPolygon && "Use Draw to define this zone's boundary"}
+            {mode === "idle" && hasPolygon  && "Polygon saved ✓"}
+          </div>
+        </div>
+      )}
+
+      {/* ── Map canvas ──────────────────────────────────────────────── */}
+      <div ref={mapRef} className="ol-map" style={{ height: readOnly ? "100%" : `calc(100% - 52px)` }} />
+    </div>
+  );
 }

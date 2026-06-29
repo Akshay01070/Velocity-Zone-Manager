@@ -16,8 +16,9 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: "⊞" },
+  { to: "/dashboard",  label: "Dashboard",  icon: "⊞" },
   { to: "/properties", label: "Properties", icon: "⌂" },
+  { to: "/map",        label: "Map Editor",  icon: "⬡" },
 ];
 
 export function AppShell() {
