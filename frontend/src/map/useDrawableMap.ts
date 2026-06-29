@@ -73,7 +73,6 @@ export function useDrawableMap({
   const drawRef   = useRef<Draw | null>(null);
   const modRef    = useRef<Modify | null>(null);
   const snapRef   = useRef<Snap | null>(null);
-  const selRef    = useRef<Select | null>(null);
 
   const [mode, setModeState] = useState<DrawMode>("idle");
   const [hasPolygon, setHasPolygon] = useState(false);
@@ -100,7 +99,7 @@ export function useDrawableMap({
   const removeInteractions = useCallback(() => {
     const map = mapInst.current;
     if (!map) return;
-    [drawRef, modRef, snapRef, selRef].forEach((r) => {
+    [drawRef, modRef, snapRef].forEach((r) => {
       if (r.current) { map.removeInteraction(r.current); r.current = null; }
     });
   }, []);

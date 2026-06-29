@@ -6,6 +6,7 @@
 export interface GeoJSONGeometry {
   type: "Polygon" | "MultiPolygon" | "Point" | string;
   coordinates: unknown;
+  /** Numeric area in m² if set by the backend */
   area?: number;
 }
 
@@ -21,6 +22,8 @@ export interface Zone {
   geometry: GeoJSONGeometry;
   property_id: string;
   created_at: string;
+  /** Computed by backend: true when area > mower_count * 2 */
+  understaffed?: boolean;
 }
 
 export interface CreateZoneRequest {
@@ -54,4 +57,22 @@ export interface ZoneFeature {
 export interface ZoneFeatureCollection {
   type: "FeatureCollection";
   features: ZoneFeature[];
+}
+
+/** Per-feature validation error returned by POST /zones/import */
+export interface ImportFeatureError {
+  featureIndex: number;
+  errors: string[];
+}
+
+/** Shape of the error.message when the backend returns 400 on /import */
+export interface ImportValidationErrors {
+  features?: ImportFeatureError[];
+  [key: string]: unknown;
+}
+
+/** Successful 201 response body from POST /zones/import */
+export interface ImportZonesResponse {
+  imported: number;
+  zones: Zone[];
 }

@@ -10,6 +10,7 @@ import type {
   CreateZoneRequest,
   UpdateZoneRequest,
   ZoneFeatureCollection,
+  ImportZonesResponse,
 } from "@/types/zones";
 
 interface DataEnvelope<T> {
@@ -41,7 +42,26 @@ export const zonesApi = {
       `${base(propertyId)}/${zoneId}`
     ),
 
-  /** Returns a downloadable GeoJSON FeatureCollection. */
+  /**
+   * Bulk-import zones from a GeoJSON FeatureCollection.
+   * Returns the list of created zones + import count.
+   */
+  import: (propertyId: string, featureCollection: ZoneFeatureCollection) =>
+    apiClient.post<DataEnvelope<ImportZonesResponse>>(
+      `${base(propertyId)}/import`,
+      featureCollection
+    ),
+
+  /**
+   * Export all zones as a downloadable GeoJSON Blob.
+   * Using responseType: "blob" so the browser can trigger Save-As.
+   */
+  exportBlob: (propertyId: string) =>
+    apiClient.get<Blob>(`${base(propertyId)}/export`, {
+      responseType: "blob",
+    }),
+
+  /** Returns parsed GeoJSON FeatureCollection (for programmatic use). */
   export: (propertyId: string) =>
     apiClient.get<ZoneFeatureCollection>(
       `${base(propertyId)}/export`,

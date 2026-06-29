@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePropertiesList } from "@/hooks/usePropertiesQuery";
 import { PropertyFormModal } from "@/components/properties/PropertyFormModal";
 import { DeleteConfirmModal } from "@/components/properties/DeleteConfirmModal";
@@ -72,6 +73,8 @@ export function PropertiesPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Property | null>(null);
 
+  const navigate = useNavigate();
+
   const openCreate = useCallback(() => {
     setEditTarget(undefined);
     setFormOpen(true);
@@ -86,6 +89,10 @@ export function PropertiesPage() {
     setDeleteTarget(p);
     setDeleteOpen(true);
   }, []);
+
+  const openViewZones = useCallback((p: Property) => {
+    navigate(`/properties/${p.id}/zones`);
+  }, [navigate]);
 
   return (
     <div className="properties-page">
@@ -179,6 +186,7 @@ export function PropertiesPage() {
                 property={prop}
                 onEdit={openEdit}
                 onDelete={openDelete}
+                onViewZones={openViewZones}
               />
             ))}
           </div>
@@ -215,9 +223,10 @@ interface PropertyCardProps {
   property: Property;
   onEdit: (p: Property) => void;
   onDelete: (p: Property) => void;
+  onViewZones: (p: Property) => void;
 }
 
-function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) {
+function PropertyCard({ property, onEdit, onDelete, onViewZones }: PropertyCardProps) {
   return (
     <div
       id={`property-card-${property.id}`}
@@ -230,6 +239,15 @@ function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) {
           {property.type}
         </div>
         <div className="prop-card-actions">
+          <button
+            id={`zones-btn-${property.id}`}
+            className="prop-action-btn prop-action-btn--zones"
+            onClick={() => onViewZones(property)}
+            aria-label={`View zones for ${property.name}`}
+            title="View Zones"
+          >
+            🗺️
+          </button>
           <button
             id={`edit-btn-${property.id}`}
             className="prop-action-btn prop-action-btn--edit"

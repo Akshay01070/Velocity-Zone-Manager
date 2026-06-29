@@ -42,3 +42,14 @@ export const modifyStyle = new Style({
     stroke: new Stroke({ color: STYLE.MODIFY_STROKE, width: 1.5 }),
   }),
 });
+
+/** Style for the currently selected zone (highlighted). */
+export const selectedStyle = new Style({
+  stroke: new Stroke({ color: "#34d399", width: 3 }),
+  fill:   new Fill({ color: "rgba(52, 211, 153, 0.18)" }),
+  image:  new CircleStyle({
+    radius: STYLE.VERTEX_RADIUS,
+    fill:   new Fill({ color: STYLE.VERTEX }),
+    stroke: new Stroke({ color: "#34d399", width: 1.5 }),
+  }),
+});

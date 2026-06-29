@@ -21,6 +21,7 @@ import { SignupPage }      from "@/pages/SignupPage";
 import { DashboardPage }   from "@/pages/DashboardPage";
 import { PropertiesPage }  from "@/pages/PropertiesPage";
 import { MapDemoPage }     from "@/pages/MapDemoPage";
+import { ZonesMapPage }    from "@/pages/ZonesMapPage";
 import { NotFoundPage }    from "@/pages/NotFoundPage";
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
         <Route element={<AppShell />}>
           <Route path="/dashboard"  element={<DashboardPage />} />
           <Route path="/properties" element={<PropertiesPage />} />
+          <Route path="/properties/:propertyId/zones" element={<ZonesMapPage />} />
           <Route path="/map"        element={<MapDemoPage />} />
         </Route>
       </Route>
