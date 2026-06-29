@@ -1,12 +1,15 @@
 """
 app/schemas/zone.py — Marshmallow schemas for zone endpoints.
 
-ZoneCreateSchema   — validates POST /properties/:id/zones body.
-ZoneUpdateSchema   — validates PUT  /properties/:id/zones/:zone_id body.
-ZoneResponseSchema — serialises a Zone ORM instance to JSON.
+ZoneCreateSchema     — validates POST /properties/:id/zones body.
+ZoneUpdateSchema     — validates PUT  /properties/:id/zones/:zone_id body.
+GeoJSONImportSchema  — validates POST /properties/:id/zones/import body.
+ZoneResponseSchema   — serialises a Zone ORM instance to JSON.
 
-Geometry is accepted and returned as a raw dict (JSONB).
-Full GeoJSON validation is intentionally deferred to a future task.
+Geometry is stored as raw JSONB.  The import schema enforces that the
+incoming document is a GeoJSON FeatureCollection whose features all carry
+Polygon geometry.  Zone properties (name, type, status, mower_count) are
+read from each feature's ``properties`` object with safe defaults.
 
 Computed fields
 ---------------
@@ -15,7 +18,7 @@ understaffed  — True when area > mower_count * 2; never persisted to DB.
 
 from __future__ import annotations
 
-from marshmallow import RAISE, Schema, ValidationError, fields, validate, validates
+from marshmallow import RAISE, Schema, ValidationError, fields, validate, validates, validates_schema
 
 from app.models.zone import ZoneStatus, ZoneType
 
@@ -124,6 +127,126 @@ class ZoneUpdateSchema(Schema):
     def validate_geometry(self, value: dict) -> None:
         if not value:
             raise ValidationError("geometry must not be an empty object.")
+
+
+# ── GeoJSON import schema ─────────────────────────────────────────────────
+
+# Allowed GeoJSON Polygon geometry types for zone import.
+_POLYGON_TYPES = {"Polygon", "MultiPolygon"}
+
+
+class GeoJSONImportSchema(Schema):
+    """Validates a GeoJSON FeatureCollection for bulk zone import.
+
+    Top-level rules
+    ~~~~~~~~~~~~~~~
+    * ``type`` must equal ``"FeatureCollection"``.
+    * ``features`` must be a non-empty list.
+
+    Per-feature rules (collected with ``featureIndex`` in error output)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    * ``geometry`` must be present and non-null.
+    * ``geometry.type`` must be ``"Polygon"`` or ``"MultiPolygon"``.
+    * ``geometry.coordinates`` must be a non-empty list.
+    * ``properties.name`` is used as the zone name; defaults to
+      ``"Unnamed Zone <N>"`` when absent.
+    * ``properties.type`` must be a valid ZoneType value when supplied;
+      defaults to ``"Fairway"``.
+    * ``properties.status`` must be a valid ZoneStatus value when supplied;
+      defaults to ``"Active"``.
+    * ``properties.mower_count`` must be a positive integer when supplied;
+      defaults to ``1`` (import always requires ≥ 1 mower).
+    """
+
+    class Meta:
+        unknown = RAISE
+
+    type = fields.String(required=True)
+    features = fields.List(fields.Dict(), required=True)
+
+    @validates("type")
+    def validate_type(self, value: str) -> None:
+        if value != "FeatureCollection":
+            raise ValidationError(
+                f"Expected a GeoJSON FeatureCollection, got '{value}'."
+            )
+
+    @validates("features")
+    def validate_features_not_empty(self, value: list) -> None:
+        if not value:
+            raise ValidationError("features must contain at least one feature.")
+
+    @validates_schema
+    def validate_each_feature(self, data: dict, **_) -> None:
+        """Validate geometry and properties for every feature.
+
+        Errors are collected across all features before raising so the caller
+        receives a complete picture of what needs to be fixed.
+        """
+        features = data.get("features", [])
+        feature_errors: list[dict] = []
+
+        for idx, feature in enumerate(features):
+            errs: list[str] = []
+
+            # ── Feature-level structure ────────────────────────────────────
+            if not isinstance(feature, dict):
+                feature_errors.append(
+                    {"featureIndex": idx, "errors": ["Feature must be a JSON object."]}
+                )
+                continue
+
+            # ── Geometry validation ────────────────────────────────────────
+            geometry = feature.get("geometry")
+            if geometry is None:
+                errs.append("geometry is required and must not be null.")
+            elif not isinstance(geometry, dict):
+                errs.append("geometry must be a JSON object.")
+            else:
+                geo_type = geometry.get("type")
+                if geo_type not in _POLYGON_TYPES:
+                    errs.append(
+                        f"geometry.type must be 'Polygon' or 'MultiPolygon'; "
+                        f"got '{geo_type}'."
+                    )
+                coords = geometry.get("coordinates")
+                if not coords:
+                    errs.append("geometry.coordinates must be a non-empty list.")
+
+            # ── Properties validation ──────────────────────────────────────
+            props = feature.get("properties") or {}
+            if not isinstance(props, dict):
+                errs.append("properties must be a JSON object or null.")
+            else:
+                zone_type = props.get("type")
+                if zone_type is not None and zone_type not in _VALID_TYPES:
+                    errs.append(
+                        f"properties.type '{zone_type}' is invalid. "
+                        f"Must be one of: {_VALID_TYPES}."
+                    )
+
+                zone_status = props.get("status")
+                if zone_status is not None and zone_status not in _VALID_STATUSES:
+                    errs.append(
+                        f"properties.status '{zone_status}' is invalid. "
+                        f"Must be one of: {_VALID_STATUSES}."
+                    )
+
+                mower_count = props.get("mower_count")
+                if mower_count is not None:
+                    if not isinstance(mower_count, int) or isinstance(mower_count, bool):
+                        errs.append("properties.mower_count must be an integer.")
+                    elif mower_count < 1:
+                        errs.append(
+                            "properties.mower_count must be at least 1 "
+                            "(a zone must have at least one assigned mower)."
+                        )
+
+            if errs:
+                feature_errors.append({"featureIndex": idx, "errors": errs})
+
+        if feature_errors:
+            raise ValidationError({"features": feature_errors})
 
 
 # ── Response schema ────────────────────────────────────────────────────────

@@ -204,6 +204,60 @@ class ZoneService:
         zone_repo.delete_zone(zone)
 
     # ------------------------------------------------------------------
+    # Import
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def import_zones(
+        property_id: str,
+        user_id: str,
+        features: list[dict],
+    ) -> list[Zone]:
+        """Bulk-import zones from a validated GeoJSON FeatureCollection.
+
+        This method is called **after** :class:`GeoJSONImportSchema` has
+        already validated the document structure, so every feature is
+        guaranteed to have a Polygon/MultiPolygon geometry.  Zone fields
+        are pulled from each feature's ``properties`` dict with defaults.
+
+        The import is atomic — all zones are persisted in one transaction.
+        If the DB write fails the entire batch is rolled back.
+
+        Args:
+            property_id: Parent property UUID.
+            user_id:     Must own the property.
+            features:    Validated list of GeoJSON Feature dicts.
+
+        Returns:
+            List of newly created :class:`Zone` instances.
+
+        Raises:
+            :class:`PropertyNotFoundError`: if property not found / not owned.
+        """
+        ZoneService._assert_property_owned(property_id, user_id)
+
+        zone_rows: list[dict] = []
+        for idx, feature in enumerate(features):
+            props = feature.get("properties") or {}
+            name = (props.get("name") or f"Unnamed Zone {idx + 1}").strip()
+            zone_type = ZoneType(props.get("type", ZoneType.FAIRWAY.value))
+            status = ZoneStatus(props.get("status", ZoneStatus.ACTIVE.value))
+            mower_count = int(props.get("mower_count", 1))
+
+            zone_rows.append(
+                {
+                    "property_id": property_id,
+                    "name": name,
+                    "zone_type": zone_type,
+                    "status": status,
+                    "mower_count": mower_count,
+                    "geometry": feature["geometry"],
+                }
+            )
+
+        return zone_repo.bulk_create_zones(zone_rows)
+
+    # ------------------------------------------------------------------
     # Summary
     # ------------------------------------------------------------------
 

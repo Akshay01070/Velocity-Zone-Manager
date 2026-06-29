@@ -11,6 +11,7 @@ Routes
 GET    /api/v1/properties/<property_id>/zones                  List all zones.
 GET    /api/v1/properties/<property_id>/zones/summary          Zone summary stats.
 POST   /api/v1/properties/<property_id>/zones                  Create a zone.
+POST   /api/v1/properties/<property_id>/zones/import           Bulk GeoJSON import.
 PUT    /api/v1/properties/<property_id>/zones/<zone_id>        Update a zone.
 DELETE /api/v1/properties/<property_id>/zones/<zone_id>        Delete a zone.
 
@@ -28,6 +29,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
 
 from app.schemas.zone import (
+    GeoJSONImportSchema,
     ZoneCreateSchema,
     ZoneUpdateSchema,
     dump_zone,
@@ -40,6 +42,7 @@ zones_bp = Blueprint("zones", __name__)
 # Schema singletons — instantiated once at module load.
 _create_schema = ZoneCreateSchema()
 _update_schema = ZoneUpdateSchema()
+_import_schema = GeoJSONImportSchema()
 
 
 # ── Response helpers ───────────────────────────────────────────────────────
@@ -209,3 +212,54 @@ def get_zones_summary(property_id: str):
         return _service_error(exc)
 
     return _ok(summary)
+
+
+@zones_bp.post("/import")
+@jwt_required()
+def import_zones(property_id: str):
+    """Bulk-import zones from a GeoJSON FeatureCollection.
+
+    Accepts a GeoJSON FeatureCollection.  Every feature must carry a
+    Polygon or MultiPolygon geometry.  Zone metadata (name, type, status,
+    mower_count) is read from each feature's ``properties`` object;
+    missing fields receive sensible defaults.
+
+    The entire import is atomic — if any feature is invalid or the DB
+    write fails, nothing is persisted.
+
+    Request body (JSON):
+        type     (str, required)   — must be "FeatureCollection"
+        features (list, required)  — one or more GeoJSON Feature objects
+
+    Returns:
+        201 Created — list of imported zones + import count.
+        400         — top-level structural errors or per-feature errors.
+        404         — property not found or not owned by user.
+    """
+    user_id: str = get_jwt_identity()
+
+    body = request.get_json(silent=True)
+    if body is None:
+        return _error(400, "Bad Request", "Request body must be valid JSON.")
+
+    try:
+        data = _import_schema.load(body)
+    except ValidationError as exc:
+        return _error(400, "Bad Request", exc.messages)
+
+    try:
+        zones = ZoneService.import_zones(
+            property_id,
+            user_id,
+            features=data["features"],
+        )
+    except ZoneError as exc:
+        return _service_error(exc)
+
+    return _ok(
+        {
+            "imported": len(zones),
+            "zones": dump_zones(zones),
+        },
+        201,
+    )

@@ -90,3 +90,40 @@ def delete_zone(zone: Zone) -> None:
     """Hard-delete *zone*."""
     db.session.delete(zone)
     db.session.commit()
+
+
+def bulk_create_zones(zone_rows: list[dict]) -> list[Zone]:
+    """Persist multiple zones in a single atomic transaction.
+
+    Args:
+        zone_rows: List of dicts, each with keys:
+            property_id, name, zone_type (ZoneType), status (ZoneStatus),
+            mower_count, geometry.
+
+    Returns:
+        List of created :class:`Zone` instances in insertion order.
+
+    Raises:
+        SQLAlchemyError: propagated on DB failure; caller handles rollback
+            by keeping the session in its default auto-rollback-on-error
+            state (Flask-SQLAlchemy rolls back on uncaught exceptions).
+    """
+    zones: list[Zone] = [
+        Zone(
+            property_id=row["property_id"],
+            name=row["name"],
+            type=row["zone_type"],
+            status=row["status"],
+            mower_count=row["mower_count"],
+            geometry=row["geometry"],
+        )
+        for row in zone_rows
+    ]
+
+    db.session.add_all(zones)
+    db.session.commit()
+
+    for zone in zones:
+        db.session.refresh(zone)
+
+    return zones
