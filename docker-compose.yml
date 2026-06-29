@@ -16,9 +16,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vzm_user} -d ${POSTGRES_DB:-vzm_db}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   # ─────────────────────────────────────────────
   # Flask Backend API
@@ -30,8 +30,10 @@ services:
     container_name: vzm_backend
     restart: unless-stopped
     environment:
+      FLASK_APP: wsgi.py
       FLASK_ENV: ${FLASK_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-vzm_user}:${POSTGRES_PASSWORD:-vzm_secret}@postgres:5432/${POSTGRES_DB:-vzm_db}
+      POSTGRES_USER: ${POSTGRES_USER:-vzm_user}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
     ports:
@@ -41,7 +43,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: flask run --host=0.0.0.0 --port=5000
 
   # ─────────────────────────────────────────────
   # React + Vite Frontend
@@ -53,7 +54,8 @@ services:
     container_name: vzm_frontend
     restart: unless-stopped
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api/v1}
+      # The Vite dev-server proxy rewrites /api → backend container
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
     ports:
       - "5173:5173"
     volumes:

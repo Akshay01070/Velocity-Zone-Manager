@@ -28,7 +28,7 @@ import { ZoneFormModal } from "@/components/zones/ZoneFormModal";
 import { ZoneSidebar } from "@/components/zones/ZoneSidebar";
 import { GeoJSONImportModal } from "@/components/zones/GeoJSONImportModal";
 import { Spinner } from "@/components/ui/Spinner";
-import type { Zone, ZoneType, ZoneStatus, GeoJSONGeometry, ZoneFeatureCollection } from "@/types/zones";
+import type { ZoneType, ZoneStatus, GeoJSONGeometry, ZoneFeatureCollection } from "@/types/zones";
 
 interface ZoneMapProps {
   propertyId: string;

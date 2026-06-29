@@ -201,6 +201,9 @@ export function GeoJSONImportModal({ open, onClose, onImport }: GeoJSONImportMod
   const handleDragLeave = useCallback(() => setDragOver(false), []);
 
   // ── upload ─────────────────────────────────────────────────────────────────
+  const isUploadDisabled: boolean =
+    !(new Set<ModalPhase>(["preview", "error"]).has(phase)) || phase === "uploading";
+
   const handleUpload = useCallback(async () => {
     if (!parseResult?.ok) return;
     setPhase("uploading");
@@ -387,7 +390,7 @@ export function GeoJSONImportModal({ open, onClose, onImport }: GeoJSONImportMod
               id="gij-upload-btn"
               className="btn btn-primary btn-sm"
               onClick={handleUpload}
-              disabled={phase !== "preview" && phase !== "error" || phase === "uploading"}
+              disabled={isUploadDisabled}
             >
               {phase === "uploading" ? (
                 <>
