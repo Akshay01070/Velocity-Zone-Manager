@@ -1,8 +1,8 @@
 """
 app/models/user.py — User ORM model.
 
-Stores authentication credentials.
-Password hashing will be implemented in the auth service layer.
+Stores authentication credentials and owns a collection of Properties.
+Password hashing is handled in the auth service layer.
 """
 
 from __future__ import annotations
@@ -39,9 +39,9 @@ class User(db.Model):
         onupdate=lambda: datetime.now(timezone.utc),
     )
 
-    # Relationships
-    zones: db.Mapped[list["Zone"]] = db.relationship(  # noqa: F821
-        "Zone", back_populates="owner", cascade="all, delete-orphan"
+    # ── Relationships ──────────────────────────────────────────────────────
+    properties: db.Mapped[list["Property"]] = db.relationship(  # noqa: F821
+        "Property", back_populates="owner", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
