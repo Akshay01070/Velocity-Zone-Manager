@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Flask
+instance/
+.env
+
+# Migrations (keep structure, ignore auto-generated)
+# migrations/versions/*.py  ← uncomment if you want to ignore migration files
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
