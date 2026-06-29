@@ -1,16 +1,8 @@
 /**
- * src/hooks/useAuth.ts — Auth state hook stub.
+ * src/hooks/useAuth.ts — Convenience re-export of AuthContext consumer.
  *
- * Will be implemented with React Context in a future iteration.
+ * Usage:
+ *   const { user, isAuthenticated, login, logout } = useAuth();
  */
 
-export function useAuth() {
-  // TODO: Implement via AuthContext
-  return {
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    login: async (_email: string, _password: string) => {},
-    logout: () => {},
-  };
-}
+export { useAuthContext as useAuth } from "@/contexts/AuthContext";

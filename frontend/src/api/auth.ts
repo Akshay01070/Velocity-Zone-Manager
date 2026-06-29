@@ -1,21 +1,23 @@
 /**
- * src/api/auth.ts — Auth API service stubs.
- *
- * Business logic will be implemented in a future iteration.
+ * src/api/auth.ts — Auth API calls.
  */
 
 import { apiClient } from "./client";
 import type { LoginRequest, LoginResponse, RegisterRequest, User } from "@/types/auth";
 
-export const authApi = {
-  register: (data: RegisterRequest) =>
-    apiClient.post<{ message: string }>("/auth/register", data),
+interface DataEnvelope<T> {
+  data: T;
+}
 
-  login: (data: LoginRequest) =>
-    apiClient.post<LoginResponse>("/auth/login", data),
+export const authApi = {
+  register: (body: RegisterRequest) =>
+    apiClient.post<DataEnvelope<{ message: string }>>("/auth/register", body),
+
+  login: (body: LoginRequest) =>
+    apiClient.post<DataEnvelope<LoginResponse>>("/auth/login", body),
 
   refresh: () =>
-    apiClient.post<{ access_token: string }>("/auth/refresh"),
+    apiClient.post<DataEnvelope<{ access_token: string }>>("/auth/refresh"),
 
-  me: () => apiClient.get<User>("/auth/me"),
+  me: () => apiClient.get<DataEnvelope<User>>("/auth/me"),
 };

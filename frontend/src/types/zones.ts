@@ -1,36 +1,57 @@
 /**
- * src/types/zones.ts — Velocity Zone domain types.
+ * src/types/zones.ts — Velocity Zone domain types (mirrors backend schema).
  */
 
-/** GeoJSON Geometry (simplified for our use case) */
+/** GeoJSON Geometry stored as JSONB */
 export interface GeoJSONGeometry {
-  type: "Polygon" | "MultiPolygon";
-  coordinates: number[][][] | number[][][][];
+  type: "Polygon" | "MultiPolygon" | "Point" | string;
+  coordinates: unknown;
+  area?: number;
 }
+
+export type ZoneType = "Fairway" | "Rough" | "Perimeter" | "Exclusion";
+export type ZoneStatus = "Active" | "Inactive";
 
 export interface Zone {
   id: string;
   name: string;
-  description: string | null;
+  type: ZoneType;
+  status: ZoneStatus;
+  mower_count: number;
   geometry: GeoJSONGeometry;
-  speed_limit_kmh: number;
-  is_active: boolean;
-  owner_id: string;
+  property_id: string;
   created_at: string;
-  updated_at: string;
 }
 
 export interface CreateZoneRequest {
   name: string;
-  description?: string;
+  type: ZoneType;
+  status?: ZoneStatus;
+  mower_count: number;
   geometry: GeoJSONGeometry;
-  speed_limit_kmh: number;
 }
 
 export interface UpdateZoneRequest {
   name?: string;
-  description?: string;
+  type?: ZoneType;
+  status?: ZoneStatus;
+  mower_count?: number;
   geometry?: GeoJSONGeometry;
-  speed_limit_kmh?: number;
-  is_active?: boolean;
+}
+
+/** GeoJSON FeatureCollection returned by the export endpoint */
+export interface ZoneFeature {
+  type: "Feature";
+  properties: {
+    name: string;
+    type: ZoneType;
+    status: ZoneStatus;
+    mower_count: number;
+  };
+  geometry: GeoJSONGeometry;
+}
+
+export interface ZoneFeatureCollection {
+  type: "FeatureCollection";
+  features: ZoneFeature[];
 }

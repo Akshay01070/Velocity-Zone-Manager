@@ -1,23 +1,50 @@
 /**
- * src/api/zones.ts — Zones API service stubs.
+ * src/api/zones.ts — Zones API calls.
  *
- * Business logic will be implemented in a future iteration.
+ * Zones are nested under properties: /api/v1/properties/:propertyId/zones
  */
 
 import { apiClient } from "./client";
-import type { Zone, CreateZoneRequest, UpdateZoneRequest } from "@/types/zones";
+import type {
+  Zone,
+  CreateZoneRequest,
+  UpdateZoneRequest,
+  ZoneFeatureCollection,
+} from "@/types/zones";
+
+interface DataEnvelope<T> {
+  data: T;
+}
+
+const base = (propertyId: string) => `/properties/${propertyId}/zones`;
 
 export const zonesApi = {
-  list: () => apiClient.get<Zone[]>("/zones/"),
+  list: (propertyId: string) =>
+    apiClient.get<DataEnvelope<{ property_id: string; zones: Zone[] }>>(
+      `${base(propertyId)}/`
+    ),
 
-  get: (id: string) => apiClient.get<Zone>(`/zones/${id}`),
+  create: (propertyId: string, body: CreateZoneRequest) =>
+    apiClient.post<DataEnvelope<{ zone: Zone }>>(
+      `${base(propertyId)}/`,
+      body
+    ),
 
-  create: (data: CreateZoneRequest) =>
-    apiClient.post<Zone>("/zones/", data),
+  update: (propertyId: string, zoneId: string, body: UpdateZoneRequest) =>
+    apiClient.put<DataEnvelope<{ zone: Zone }>>(
+      `${base(propertyId)}/${zoneId}`,
+      body
+    ),
 
-  update: (id: string, data: UpdateZoneRequest) =>
-    apiClient.put<Zone>(`/zones/${id}`, data),
+  delete: (propertyId: string, zoneId: string) =>
+    apiClient.delete<DataEnvelope<{ message: string }>>(
+      `${base(propertyId)}/${zoneId}`
+    ),
 
-  delete: (id: string) =>
-    apiClient.delete<{ message: string }>(`/zones/${id}`),
+  /** Returns a downloadable GeoJSON FeatureCollection. */
+  export: (propertyId: string) =>
+    apiClient.get<ZoneFeatureCollection>(
+      `${base(propertyId)}/export`,
+      { responseType: "json" }
+    ),
 };
