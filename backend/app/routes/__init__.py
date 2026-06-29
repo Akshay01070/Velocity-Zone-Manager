@@ -19,6 +19,7 @@ def register_routes(app: Flask) -> None:
     from app.routes.health import health_bp
     from app.routes.auth import auth_bp
     from app.routes.properties import properties_bp
+    from app.routes.zones import zones_bp
 
     # ── System routes ──────────────────────────────────────────────────────
     app.register_blueprint(health_bp)
@@ -28,3 +29,9 @@ def register_routes(app: Flask) -> None:
 
     # ── Properties routes (JWT-protected) ─────────────────────────────────
     app.register_blueprint(properties_bp, url_prefix=f"{API_V1}/properties")
+
+    # ── Zones routes (JWT-protected, nested under properties) ─────────────
+    app.register_blueprint(
+        zones_bp,
+        url_prefix=f"{API_V1}/properties/<string:property_id>/zones",
+    )
