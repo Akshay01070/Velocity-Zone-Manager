@@ -13,6 +13,7 @@
  *   <DrawableMap onGeometryChange={(g) => setGeometry(g)} height="400px" />
  */
 
+import type React from "react";
 import { useDrawableMap } from "@/map/useDrawableMap";
 import type { GeoJSONGeometry } from "@/types/zones";
 
@@ -22,6 +23,8 @@ interface DrawableMapProps {
   height?:           string;
   className?:        string;
   readOnly?:         boolean;
+  /** Optional ref to receive the flyTo function after mount */
+  flyToRef?:         React.MutableRefObject<((lon: number, lat: number, zoom?: number) => void) | null>;
 }
 
 export function DrawableMap({
@@ -30,11 +33,15 @@ export function DrawableMap({
   height     = "500px",
   className  = "",
   readOnly   = false,
+  flyToRef,
 }: DrawableMapProps) {
-  const { mapRef, mode, setMode, clearPolygon, hasPolygon } = useDrawableMap({
+  const { mapRef, mode, setMode, clearPolygon, hasPolygon, flyTo } = useDrawableMap({
     onGeometryChange,
     initialGeometry,
   });
+
+  // Expose flyTo to parent via ref
+  if (flyToRef) flyToRef.current = flyTo;
 
   return (
     <div className={`drawable-map-wrapper ${className}`} style={{ height }}>

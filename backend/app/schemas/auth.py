@@ -23,11 +23,6 @@ class SignupSchema(Schema):
     password = fields.String(required=True)
     full_name = fields.String(required=True)
 
-    @validates("email")
-    def normalise_email(self, value: str) -> str:  # noqa: D401
-        """Strip whitespace and lower-case the address."""
-        return value.strip().lower()
-
     @validates("password")
     def validate_password(self, value: str) -> None:
         if len(value) < 8:
@@ -39,8 +34,9 @@ class SignupSchema(Schema):
             raise ValidationError("full_name must not be blank.")
 
     @post_load
-    def strip_strings(self, data: dict, **kwargs) -> dict:
-        """Strip leading/trailing whitespace from string fields."""
+    def normalise_and_strip(self, data: dict, **kwargs) -> dict:
+        """Normalise email (strip + lower-case) and strip full_name."""
+        data["email"] = data["email"].strip().lower()
         data["full_name"] = data["full_name"].strip()
         return data
 
@@ -54,6 +50,8 @@ class LoginSchema(Schema):
     email = fields.Email(required=True)
     password = fields.String(required=True)
 
-    @validates("email")
-    def normalise_email(self, value: str) -> str:
-        return value.strip().lower()
+    @post_load
+    def normalise_email(self, data: dict, **kwargs) -> dict:
+        """Strip whitespace and lower-case the email address."""
+        data["email"] = data["email"].strip().lower()
+        return data

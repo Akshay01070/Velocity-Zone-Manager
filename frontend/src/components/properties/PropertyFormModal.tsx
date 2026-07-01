@@ -66,9 +66,9 @@ export function PropertyFormModal({ open, onClose, property }: Props) {
     const el = dialogRef.current;
     if (!el) return;
     if (open) {
-      el.showModal();
+      if (!el.open) el.showModal();
     } else {
-      el.close();
+      if (el.open) el.close();
     }
   }, [open]);
 

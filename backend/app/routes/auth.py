@@ -14,8 +14,11 @@ All responses follow the project's standard envelope:
 from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
 
+from app.models.user import User
+from app.extensions import db
 from app.schemas.auth import LoginSchema, SignupSchema
 from app.services.auth_service import AuthError, AuthService
 
@@ -83,6 +86,37 @@ def signup():
         },
         201,
     )
+
+
+@auth_bp.get("/me")
+@jwt_required()
+def me():
+    """Return the currently authenticated user's profile.
+
+    Requires a valid Bearer token in the Authorization header.
+
+    Returns:
+        200 OK          — user profile object
+        401 Unauthorized — missing or invalid token
+        404 Not Found   — user deleted after token was issued
+    """
+    user_id: str = get_jwt_identity()
+    user: User | None = db.session.get(User, user_id)
+
+    if user is None:
+        return _error(404, "Not Found", "User not found.")
+
+    if not user.is_active:
+        return _error(403, "Forbidden", "This account has been deactivated.")
+
+    return _ok({
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat(),
+    })
+
 
 
 @auth_bp.post("/login")

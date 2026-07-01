@@ -37,7 +37,7 @@ export function DashboardPage() {
         <Button
           id="new-property-btn"
           variant="primary"
-          onClick={() => navigate("/properties/new")}
+          onClick={() => navigate("/properties", { state: { openCreate: true } })}
         >
           + New Property
         </Button>
@@ -81,7 +81,7 @@ export function DashboardPage() {
             <p className="empty-text">No properties yet.</p>
             <Button
               id="empty-new-property-btn"
-              onClick={() => navigate("/properties/new")}
+              onClick={() => navigate("/properties", { state: { openCreate: true } })}
             >
               Create your first property
             </Button>

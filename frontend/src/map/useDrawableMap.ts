@@ -37,6 +37,7 @@ import {
   MAX_ZOOM,
   PROJECTION,
 } from "./mapConstants";
+import { fromLonLat } from "ol/proj";
 import { polygonStyle, sketchStyle, modifyStyle } from "./mapStyles";
 import { featureToGeoJSON, geoJSONToFeature } from "./geoJsonHelpers";
 import type { GeoJSONGeometry } from "@/types/zones";
@@ -61,6 +62,8 @@ interface UseDrawableMapReturn {
   clearPolygon: () => void;
   /** True while an active polygon exists on the map. */
   hasPolygon: boolean;
+  /** Pan and zoom the map to a lon/lat coordinate (EPSG:4326). */
+  flyTo: (lon: number, lat: number, zoom?: number) => void;
 }
 
 export function useDrawableMap({
@@ -188,6 +191,17 @@ export function useDrawableMap({
     setModeState("idle");
   }, [emitGeometry]);
 
+  // ── Fly to a lon/lat location ────────────────────────────────────────────
+  const flyTo = useCallback((lon: number, lat: number, zoom = 14) => {
+    const view = mapInst.current?.getView();
+    if (!view) return;
+    view.animate({
+      center: fromLonLat([lon, lat]),
+      zoom,
+      duration: 600,
+    });
+  }, []);
+
   // ── Initialise OL map (once) ─────────────────────────────────────────────
   useEffect(() => {
     if (!mapRef.current || mapInst.current) return;
@@ -239,5 +253,5 @@ export function useDrawableMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { mapRef, mode, setMode, clearPolygon, hasPolygon };
+  return { mapRef, mode, setMode, clearPolygon, hasPolygon, flyTo };
 }

@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { usePropertiesList } from "@/hooks/usePropertiesQuery";
 import { PropertyFormModal } from "@/components/properties/PropertyFormModal";
 import { DeleteConfirmModal } from "@/components/properties/DeleteConfirmModal";
@@ -74,6 +74,7 @@ export function PropertiesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Property | null>(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const openCreate = useCallback(() => {
     setEditTarget(undefined);
@@ -88,6 +89,17 @@ export function PropertiesPage() {
   const openDelete = useCallback((p: Property) => {
     setDeleteTarget(p);
     setDeleteOpen(true);
+  }, []);
+
+  /* Auto-open create modal when navigated here with state.openCreate */
+  useEffect(() => {
+    if ((location.state as { openCreate?: boolean } | null)?.openCreate) {
+      openCreate();
+      // Clear the navigation state so back/forward doesn't re-trigger it
+      window.history.replaceState({}, "");
+    }
+  // Only run once on mount — location.state is read once intentionally
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const openViewZones = useCallback((p: Property) => {

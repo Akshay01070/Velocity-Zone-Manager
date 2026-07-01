@@ -11,7 +11,7 @@ interface DataEnvelope<T> {
 
 export const authApi = {
   register: (body: RegisterRequest) =>
-    apiClient.post<DataEnvelope<{ message: string }>>("/auth/register", body),
+    apiClient.post<DataEnvelope<{ message: string }>>("/auth/signup", body),
 
   login: (body: LoginRequest) =>
     apiClient.post<DataEnvelope<LoginResponse>>("/auth/login", body),

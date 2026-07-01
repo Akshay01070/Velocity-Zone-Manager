@@ -22,10 +22,10 @@ export function DeleteConfirmModal({ open, onClose, property }: Props) {
     const el = dialogRef.current;
     if (!el) return;
     if (open) {
-      el.showModal();
+      if (!el.open) el.showModal();
       deleteMutation.reset();
     } else {
-      el.close();
+      if (el.open) el.close();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
